@@ -8,6 +8,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
     <style>
         /* Custom scrollbar and range input styling */
         ::-webkit-scrollbar { width: 8px; }
@@ -24,6 +30,7 @@
         .prose h3 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 700; color: #fff; }
         .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
         .prose li { margin-bottom: 0.25em; }
+        .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30 pb-12 min-h-screen">
@@ -400,12 +407,16 @@
                     <!-- RF Module Help -->
                     <div class="bg-slate-800/30 p-5 rounded-lg border border-slate-700/50">
                         <h3 class="text-blue-400 flex items-center mt-0"><i data-lucide="radio" class="w-4 h-4 mr-2"></i> RF Link Dynamics</h3>
-                        <p>The RF module determines signal viability against the background thermal noise floor ($kTB$). It features a decoupled architectural approach to baseband processing and transponder allocation.</p>
+                        <p>The RF module determines signal viability against the background thermal noise floor ($kTB$). Link closure evaluates the <strong>Carrier-to-Noise Ratio</strong> ($C/N$) and <strong>Energy per Bit</strong> ($E_b/N_0$).</p>
+                        
+                        $$\frac{E_b}{N_0} = \mathit{EIRP} - \mathit{FSPL} + \frac{G}{T} - L_{atm} - k - 10\log_{10}(R_b)$$
+
                         <ul>
                             <li><strong>Baseband Efficiency ($\eta_{bb}$):</strong> The product of the raw modulation bits-per-symbol ($m$) and the Forward Error Correction code rate ($r$). Modifying this alters the underlying <strong>Symbol Rate ($R_s$)</strong> required to meet your target data throughput.</li>
-                            <li><strong>Occupied Bandwidth ($B_{occ}$):</strong> Derived via $R_s \cdot (1 + \alpha)$, where $\alpha$ is the root-raised-cosine <strong>Roll-off Factor</strong>. If this physical footprint exceeds the <strong>Allocated Bandwidth</strong> limit, a <em>Spectral Violation</em> is flagged to ensure <strong>ITU-R</strong> compliance.</li>
-                            <li><strong>Carrier-to-Noise Ratio (C/N):</strong> Evaluated over the Nyquist noise bandwidth (which equates to $R_s$), ensuring the calculated analogue SNR strictly represents the signal matching the receiver's intermediate frequency (IF) filter constraints.</li>
-                            <li><strong>Target $E_b/N_0$:</strong> The absolute digital energy threshold per bit required to achieve link closure at the specified Bit Error Rate (BER), inherently factoring out the physical channel filtering overheads.</li>
+                            <li><strong>Occupied Bandwidth ($B_{occ}$):</strong> Derived via the equation below, where $\alpha$ is the root-raised-cosine <strong>Roll-off Factor</strong>. 
+                                $$B_{occ} = R_s \cdot (1 + \alpha)$$
+                                If this footprint exceeds the <strong>Allocated Bandwidth</strong> limit, a <em>Spectral Violation</em> is flagged to ensure <strong>ITU-R</strong> compliance.</li>
+                            <li><strong>Carrier-to-Noise Ratio (C/N):</strong> Evaluated over the Nyquist noise bandwidth (which equates to $R_s$), ensuring the calculated analogue SNR strictly represents the signal matching the receiver's intermediate frequency filter constraints.</li>
                         </ul>
                     </div>
 
@@ -414,10 +425,15 @@
                         <h3 class="text-emerald-400 flex items-center mt-0"><i data-lucide="zap" class="w-4 h-4 mr-2"></i> Optical (FSOC) Dynamics</h3>
                         <p>The Free Space Optical Communications (FSOC) module abstains from thermal limits, instead evaluating link viability against discrete quantum thresholds and atmospheric phase distortions.</p>
                         <ul>
-                            <li><strong>Fried Parameter ($r_0$):</strong> Quantifies the transverse coherence length of the atmosphere. Entered at a standard $500\text{ nm}$ reference, the engine dynamically scales this to your operational <strong>Wavelength ($\lambda$)</strong> via $r_0 \propto \lambda^{6/5}$.</li>
-                            <li><strong>Zernike Compensation:</strong> Simulates the active suppression of wavefront phase variance. Utilising a Kolmogorov turbulence model, uncompensated modes translate into a focal plane scatter, drastically reducing the <strong>Strehl Ratio</strong> and inflicting severe single-mode fibre <strong>Coupling Loss</strong>.</li>
-                            <li><strong>Quantum Sensitivity:</strong> Replaces the standard thermal $T_{sys}$ metric. Sensitivity is determined by the minimum <strong>Photons/bit</strong> ($N_p$) required by the detection scheme (e.g., direct vs. coherent detection).</li>
-                            <li><strong>Absolute Detection Threshold:</strong> The engine translates the quantum requirement into an absolute power limit ($P_{req}$ in dBm) using the discrete photon energy $E_p = hc/\lambda$ and the continuous <strong>Data Rate ($R_b$)</strong>.</li>
+                            <li><strong>Fried Parameter ($r_0$):</strong> Quantifies the transverse coherence length of the atmosphere. Entered at a standard $500\text{ nm}$ reference, the engine dynamically scales this to your operational <strong>Wavelength ($\lambda$)</strong> via:
+                                $$r_0(\lambda) = r_{0,500} \left( \frac{\lambda}{500 \text{ nm}} \right)^{6/5}$$
+                            </li>
+                            <li><strong>Zernike Compensation:</strong> Simulates the active suppression of wavefront phase variance ($\sigma_\phi^2$). Uncompensated modes translate into a focal plane scatter, drastically reducing the <strong>Strehl Ratio</strong> ($S$) and inflicting severe fibre <strong>Coupling Loss</strong>.
+                                $$S \approx \exp(-\sigma_\phi^2) \quad \text{where} \quad \sigma_\phi^2 = 1.029 \left(\frac{D_{rx}}{r_0}\right)^{5/3}$$
+                            </li>
+                            <li><strong>Quantum Sensitivity:</strong> Sensitivity is determined by the minimum <strong>Photons/bit</strong> ($N_p$) required by the detection scheme. The engine translates this into an absolute power limit ($P_{req}$) using the continuous <strong>Data Rate ($R_b$)</strong>:
+                                $$P_{req} = N_p \left(\frac{hc}{\lambda}\right) R_b$$
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -765,6 +781,19 @@
 
         // Switch to the RF Tab on initial load to immediately display the requested parameters
         switchTab('rf');
+
+        // Render math equations after DOM is fully loaded
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
+        });
 
     </script>
 </body>

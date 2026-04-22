@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SatLink Designer - AF ENGINEERING TOOLS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar and range input styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        input[type=range] { accent-color: #3b82f6; }
+        /* Hide number spinner arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30 pb-12 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-slate-950 border-b border-slate-800 px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-md">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <i data-lucide="satellite" class="text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white">SatLink Designer</h1>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Advanced Telemetry Optimisation</p>
+            </div>
+        </div>
+        <div class="text-right">
+            <span class="text-sm font-bold tracking-[0.2em] text-blue-400 border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 rounded-full">
+                AF ENGINEERING TOOLS
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Configuration -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Orbital Geometry Section -->
+            <section class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 shadow-lg">
+                <div class="flex items-center space-x-2 mb-4 text-blue-400">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                    <h2 class="text-lg font-semibold text-white">Orbital Geometry</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm text-slate-300 font-medium mb-2">Target Altitude (km)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" step="any" id="orbitAlt" value="1500" class="calc-trigger w-full bg-slate-900 border border-slate-600 text-white px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
+                            <select id="orbitAltPreset" class="bg-slate-700 border border-slate-600 text-white px-3 py-2 rounded focus:outline-none">
+                                <option value="35786">GEO (35,786)</option>
+                                <option value="20000">MEO (20,000)</option>
+                                <option value="500">LEO (500)</option>
+                                <option value="custom" hidden selected>Custom</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-300 font-medium mb-2">Elevation Angle (deg)</label>
+                        <input type="range" min="0" max="90" step="1" id="elevationAngle" value="30" class="calc-trigger w-full"/>
+                        <div class="text-right mt-1 font-mono text-blue-300" id="elevationDisplay">30°</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Domain Selection Tabs -->
+            <div class="flex space-x-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700">
+                <button id="tab-rf" onclick="switchTab('rf')" class="flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700">
+                    <i data-lucide="radio" class="w-4 h-4"></i>
+                    <span>RF Link Budget</span>
+                </button>
+                <button id="tab-fsoc" onclick="switchTab('fsoc')" class="flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-200 bg-emerald-600 text-white shadow-lg">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    <span>FSOC Link Budget</span>
+                </button>
+            </div>
+
+            <!-- Dynamic Input Matrix -->
+            <section class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 shadow-lg">
+                <div class="flex items-center space-x-2 mb-6 text-white">
+                    <span id="matrix-icon-rf" class="hidden"><i data-lucide="settings" class="w-5 h-5 text-blue-400"></i></span>
+                    <span id="matrix-icon-fsoc"><i data-lucide="settings" class="w-5 h-5 text-emerald-400"></i></span>
+                    <h2 class="text-lg font-semibold"><span id="matrix-title">FSOC</span> Parameters Matrix</h2>
+                </div>
+
+                <!-- RF Matrix -->
+                <div id="matrix-rf" class="hidden grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                    <div class="space-y-1">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Transmitter & Channel</h3>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Frequency</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfFreq" value="20" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">GHz</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Allocated Bandwidth</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfBandwidth" value="30" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none" title="Transponder limits"><span class="text-xs text-slate-400 w-12">MHz</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Tx Power</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfTxPower" value="5" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">W</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Tx Antenna Gain</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfTxGain" value="26.6" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dBi</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Tx Line Losses</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfTxLoss" value="1.5" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Atmospheric/Rain Loss</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfAtmLoss" value="2.5" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB</span></div>
+                        </div>
+                    </div>
+                    <div class="space-y-1 mt-6 md:mt-0">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Receiver & System</h3>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Rx Antenna Gain</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfRxGain" value="32" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dBi</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Rx Line Losses</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfRxLoss" value="1" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">System Temp (T_sys)</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfSysTemp" value="200" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">K</span></div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Data Rate (R_b)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" step="any" id="rfDataRate" value="25" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
+                                <span class="text-xs text-slate-400 w-12">Mbps</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Baseband Eff. (m × r)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" step="any" id="rfBasebandEff" value="1.0" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
+                                <span class="text-xs text-slate-400 w-12">bps/sym</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Roll-off Factor (α)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" step="0.05" id="rfRolloff" value="0.20" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
+                                <span class="text-xs text-slate-400 w-12"></span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Modulation Target (Eb/N0)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" step="any" id="rfReqEbN0" value="6" class="calc-trigger w-16 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
+                                <select id="rfModPreset" class="w-24 bg-slate-800 border border-slate-600 text-white text-xs px-1 py-1.5 rounded focus:outline-none">
+                                    <option value="9.6" data-eff="0.5">BPSK 1/2</option>
+                                    <option value="10.5" data-eff="1.0">QPSK 1/2</option>
+                                    <option value="14.0" data-eff="2.0">8PSK 2/3</option>
+                                    <option value="15.5" data-eff="3.0">16QAM 3/4</option>
+                                    <option value="20.0" data-eff="5.0">64QAM 5/6</option>
+                                    <option value="custom" hidden selected>Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Occ. Bw / Symbol Rate</label>
+                            <div class="flex items-center space-x-2 text-right">
+                                <span id="rfOccBw" class="text-sm font-mono text-blue-300">30.00 MHz</span>
+                                <span class="text-xs text-slate-500">/</span>
+                                <span id="rfSymbolRate" class="text-sm font-mono text-slate-400">25.00 Msps</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FSOC Matrix -->
+                <div id="matrix-fsoc" class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                    <div class="space-y-1">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Optical Path</h3>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Wavelength</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocWave" value="1550" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">nm</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Tx Power</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocTxPower" value="1000" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">mW</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Tx Aperture (D_tx)</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocTxAperture" value="0.02" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">m</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Tx Pointing Loss</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocPointingLoss" value="3.0" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Static Atm Loss</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocAtmLoss" value="1.5" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB</span></div>
+                        </div>
+                    </div>
+                    <div class="space-y-1 mt-6 md:mt-0">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Adaptive Optics & Rx System</h3>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Rx Aperture (D_rx)</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocRxAperture" value="0.6" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">m</span></div>
+                        </div>
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Atm Seeing (r0 @ 500nm)</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocR0_500" value="10" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">cm</span></div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Compensated Zernike Modes</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" step="any" id="fsocAoModes" value="10" class="calc-trigger w-16 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
+                                <select id="fsocAoPreset" class="w-24 bg-slate-800 border border-slate-600 text-white text-xs px-1 py-1 rounded focus:outline-none">
+                                    <option value="0">0 (None)</option>
+                                    <option value="2">2 (Tip/Tilt)</option>
+                                    <option value="10" selected>10 (Low)</option>
+                                    <option value="30">30 (High)</option>
+                                    <option value="custom" hidden>Custom</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Data Rate</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="fsocDataRate" value="1000" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">Mbps</span></div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
+                            <label class="text-sm text-slate-300 font-medium">Rx Mod (Photons/bit)</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" step="any" id="fsocReqPhotons" value="40" class="calc-trigger w-16 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
+                                <select id="fsocModPreset" class="w-24 bg-slate-800 border border-slate-600 text-white text-xs px-1 py-1.5 rounded focus:outline-none">
+                                    <option value="40" selected>OOK (40)</option>
+                                    <option value="20">DPSK (20)</option>
+                                    <option value="9">BPSK (9)</option>
+                                    <option value="18">QPSK (18)</option>
+                                    <option value="custom" hidden>Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Results Dashboard -->
+        <div class="lg:col-span-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl sticky top-24 overflow-hidden">
+                
+                <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex items-center">
+                    <i data-lucide="shield-check" class="mr-2 text-blue-500 w-6 h-6"></i>
+                    <h2 class="text-xl font-bold text-white">Link Analysis</h2>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    
+                    <div>
+                        <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Slant Distance</p>
+                        <div class="flex items-end">
+                            <span id="res-distance" class="text-3xl font-mono text-white">0.0</span>
+                            <span class="text-slate-500 ml-2 mb-1">km</span>
+                        </div>
+                    </div>
+
+                    <!-- Shared Results -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                            <span class="text-sm text-slate-300">Free Space Path Loss</span>
+                            <span id="res-fspl" class="font-mono text-red-400 font-medium">-0.00 dB</span>
+                        </div>
+                        
+                        <!-- RF Specific Results -->
+                        <div id="res-group-rf" class="hidden space-y-4">
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="text-sm text-slate-300">EIRP</span>
+                                <span id="res-rf-eirp" class="font-mono text-blue-300 font-medium">0.00 dBW</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="text-sm text-slate-300">Received Power (Prx)</span>
+                                <span id="res-rf-prx" class="font-mono text-white font-medium">0.00 dBm</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="text-sm text-slate-300">G/T</span>
+                                <span id="res-rf-gt" class="font-mono text-white font-medium">0.00 dB/K</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <div>
+                                    <span class="text-sm text-slate-300 block">Carrier-to-Noise (C/N)</span>
+                                    <span class="text-[10px] text-slate-500">Over Symbol Rate Bandwidth</span>
+                                </div>
+                                <span id="res-rf-cn" class="font-mono text-white font-medium">0.00 dB</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="text-sm text-slate-300">Eb/N0</span>
+                                <span id="res-rf-ebn0" class="font-mono text-white font-medium">0.00 dB</span>
+                            </div>
+                        </div>
+
+                        <!-- FSOC Specific Results -->
+                        <div id="res-group-fsoc" class="space-y-4">
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="text-sm text-slate-300">Aperture Gains (Tx+Rx)</span>
+                                <span id="res-fsoc-gains" class="font-mono text-emerald-300 font-medium">+0.00 dB</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-red-900/30">
+                                <div>
+                                    <span class="text-sm text-slate-300 block">AO Coupling Loss</span>
+                                    <span id="res-fsoc-strehl" class="text-[10px] text-slate-500">Strehl: 0.0000</span>
+                                </div>
+                                <span id="res-fsoc-coupling" class="font-mono text-red-400 font-medium">-0.00 dB</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <span class="text-sm text-slate-300">Coupled Rx Power</span>
+                                <span id="res-fsoc-prx" class="font-mono text-white font-medium">0.00 dBm</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                                <div>
+                                    <span class="text-sm text-slate-300 block">Required Rx Sensitivity</span>
+                                    <span class="text-[10px] text-slate-500">Quantum Photon Limit</span>
+                                </div>
+                                <span id="res-fsoc-sens" class="font-mono text-yellow-300 font-medium">0.00 dBm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Margin Indicator -->
+                    <div id="margin-box" class="mt-8 p-5 rounded-xl border bg-green-900/20 border-green-500/50">
+                        <p class="text-sm font-bold uppercase tracking-wider text-slate-300 mb-2">System Link Margin</p>
+                        <div class="flex items-end space-x-2">
+                            <span id="res-margin" class="text-5xl font-mono font-bold tracking-tighter text-green-400">+0.00</span>
+                            <span class="text-lg text-slate-400 mb-1">dB</span>
+                        </div>
+                        <div id="margin-msg" class="text-xs mt-3">
+                            <div id="msg-robust" class="hidden flex items-center text-slate-400">
+                                <i data-lucide="info" class="w-3.5 h-3.5 mr-1 flex-shrink-0"></i> Link is highly robust.
+                            </div>
+                            <div id="msg-marginal" class="hidden flex items-center text-slate-400">
+                                <i data-lucide="info" class="w-3.5 h-3.5 mr-1 flex-shrink-0"></i> Link marginal. Atmospheric fade may cause outage.
+                            </div>
+                            <div id="msg-failed" class="hidden flex items-center text-slate-400">
+                                <i data-lucide="info" class="w-3.5 h-3.5 mr-1 flex-shrink-0"></i> Link closure failed. Power beneath target threshold.
+                            </div>
+                            <div id="msg-violation" class="hidden flex items-center text-red-400 font-medium">
+                                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 mr-1 flex-shrink-0"></i> Spectral Violation: Occupied Bandwidth exceeds Allocated limit.
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Constants
+        const R_EARTH = 6378.137; // km
+        const BOLTZMANN_DBW = -228.6; // dBW/K/Hz
+        const PLANCK_H = 6.626e-34; // J*s
+        const C_SPEED = 299792458; // m/s
+        let activeDomain = 'rf'; // Defaulting to RF to display the requested setup immediately
+
+        // Initialize Lucide Icons Safely
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
+        // --------------------------------------------------
+        // UI & Tab Switching Logic
+        // --------------------------------------------------
+        function switchTab(domain) {
+            activeDomain = domain;
+            
+            // Tab Buttons
+            const btnRf = document.getElementById('tab-rf');
+            const btnFsoc = document.getElementById('tab-fsoc');
+            
+            // Matrices
+            const matrixRf = document.getElementById('matrix-rf');
+            const matrixFsoc = document.getElementById('matrix-fsoc');
+            
+            // Result Groups
+            const resRf = document.getElementById('res-group-rf');
+            const resFsoc = document.getElementById('res-group-fsoc');
+            
+            // Icon & Title
+            const iconRf = document.getElementById('matrix-icon-rf');
+            const iconFsoc = document.getElementById('matrix-icon-fsoc');
+            const title = document.getElementById('matrix-title');
+
+            if (domain === 'rf') {
+                btnRf.className = 'flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-200 bg-blue-600 text-white shadow-lg';
+                btnFsoc.className = 'flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700';
+                
+                matrixRf.classList.remove('hidden');
+                matrixFsoc.classList.add('hidden');
+                
+                resRf.classList.remove('hidden');
+                resFsoc.classList.add('hidden');
+                
+                title.innerText = 'RF';
+                iconRf.classList.remove('hidden');
+                iconFsoc.classList.add('hidden');
+            } else {
+                btnFsoc.className = 'flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-200 bg-emerald-600 text-white shadow-lg';
+                btnRf.className = 'flex-1 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-slate-700';
+                
+                matrixFsoc.classList.remove('hidden');
+                matrixRf.classList.add('hidden');
+                
+                resFsoc.classList.remove('hidden');
+                resRf.classList.add('hidden');
+                
+                title.innerText = 'FSOC';
+                iconFsoc.classList.remove('hidden');
+                iconRf.classList.add('hidden');
+            }
+            
+            calculateResults();
+        }
+
+        // --------------------------------------------------
+        // Input Binding & Presets Logic
+        // --------------------------------------------------
+        
+        // Bind range slider text
+        document.getElementById('elevationAngle').addEventListener('input', (e) => {
+            document.getElementById('elevationDisplay').innerText = e.target.value + '°';
+        });
+
+        // Helper to bind select dropdowns to input fields
+        function bindPreset(selectId, inputId) {
+            const select = document.getElementById(selectId);
+            const input = document.getElementById(inputId);
+            
+            // Select changes input
+            select.addEventListener('change', (e) => {
+                if (e.target.value !== 'custom') {
+                    input.value = e.target.value;
+                    calculateResults();
+                }
+            });
+
+            // Input changes select
+            input.addEventListener('input', (e) => {
+                let found = false;
+                Array.from(select.options).forEach(opt => {
+                    if (opt.value === e.target.value && opt.value !== 'custom') {
+                        select.value = opt.value;
+                        found = true;
+                    }
+                });
+                if (!found) select.value = 'custom';
+            });
+        }
+
+        bindPreset('orbitAltPreset', 'orbitAlt');
+        bindPreset('fsocAoPreset', 'fsocAoModes');
+        bindPreset('fsocModPreset', 'fsocReqPhotons');
+
+        // Custom RF Modulation Binding (Handles Eb/N0 and Baseband Efficiency)
+        const rfModPreset = document.getElementById('rfModPreset');
+        const rfReqEbN0 = document.getElementById('rfReqEbN0');
+        const rfBasebandEff = document.getElementById('rfBasebandEff');
+
+        rfModPreset.addEventListener('change', (e) => {
+            if (e.target.value !== 'custom') {
+                const selectedOpt = e.target.options[e.target.selectedIndex];
+                rfReqEbN0.value = e.target.value;
+                rfBasebandEff.value = selectedOpt.getAttribute('data-eff');
+                calculateResults();
+            }
+        });
+
+        function checkRfCustom() {
+            let found = false;
+            Array.from(rfModPreset.options).forEach(opt => {
+                if (opt.value === rfReqEbN0.value && opt.getAttribute('data-eff') === rfBasebandEff.value && opt.value !== 'custom') {
+                    rfModPreset.value = opt.value;
+                    found = true;
+                }
+            });
+            if (!found) rfModPreset.value = 'custom';
+        }
+        
+        rfReqEbN0.addEventListener('input', checkRfCustom);
+        rfBasebandEff.addEventListener('input', checkRfCustom);
+
+        // Bind all inputs to trigger calculation
+        document.querySelectorAll('.calc-trigger').forEach(el => {
+            el.addEventListener('input', calculateResults);
+        });
+
+        // Format helper
+        const formatNum = (num, dec = 2) => Number(num).toFixed(dec);
+
+        // --------------------------------------------------
+        // Physics Engine
+        // --------------------------------------------------
+        function calculateResults() {
+            // Get Geometry
+            const alt = parseFloat(document.getElementById('orbitAlt').value) || 0;
+            const elev = parseFloat(document.getElementById('elevationAngle').value) || 0;
+
+            // Slant Distance
+            const thetaRad = (elev * Math.PI) / 180;
+            const sinTheta = Math.sin(thetaRad);
+            const distanceKm = -R_EARTH * sinTheta + Math.sqrt(Math.pow(R_EARTH * sinTheta, 2) + 2 * R_EARTH * alt + Math.pow(alt, 2));
+            
+            document.getElementById('res-distance').innerText = formatNum(distanceKm, 1);
+
+            let margin = 0;
+            let spectralViolation = false;
+
+            if (activeDomain === 'rf') {
+                // --- RF Calculations ---
+                const freq = parseFloat(document.getElementById('rfFreq').value) || 0;
+                const allocBw = parseFloat(document.getElementById('rfBandwidth').value) || 0;
+                const txPower = parseFloat(document.getElementById('rfTxPower').value) || 0;
+                const txGain = parseFloat(document.getElementById('rfTxGain').value) || 0;
+                const txLoss = parseFloat(document.getElementById('rfTxLoss').value) || 0;
+                const rxGain = parseFloat(document.getElementById('rfRxGain').value) || 0;
+                const rxLoss = parseFloat(document.getElementById('rfRxLoss').value) || 0;
+                const atmLoss = parseFloat(document.getElementById('rfAtmLoss').value) || 0;
+                const sysTemp = parseFloat(document.getElementById('rfSysTemp').value) || 1;
+                
+                // Baseband Parameters
+                const dataRate = parseFloat(document.getElementById('rfDataRate').value) || 0;
+                const reqEbN0 = parseFloat(document.getElementById('rfReqEbN0').value) || 0;
+                const bbEff = parseFloat(document.getElementById('rfBasebandEff').value) || 1;
+                const rolloff = parseFloat(document.getElementById('rfRolloff').value) || 0;
+
+                // Derived Bandwidths
+                const symbolRate = bbEff > 0 ? dataRate / bbEff : 0; // Msps
+                const occBw = symbolRate * (1 + rolloff); // MHz
+                
+                // DOM Update for Derived Bandwidths
+                document.getElementById('rfSymbolRate').innerText = `${formatNum(symbolRate)} Msps`;
+                const occBwEl = document.getElementById('rfOccBw');
+                occBwEl.innerText = `${formatNum(occBw)} MHz`;
+                
+                if (occBw > allocBw) {
+                    spectralViolation = true;
+                    occBwEl.classList.remove('text-blue-300');
+                    occBwEl.classList.add('text-red-400', 'font-bold');
+                } else {
+                    occBwEl.classList.remove('text-red-400', 'font-bold');
+                    occBwEl.classList.add('text-blue-300');
+                }
+
+                // RF Path Calculations
+                const txPowerDbw = 10 * Math.log10(txPower || 0.0001);
+                const eirp = txPowerDbw + txGain - txLoss;
+                const fspl = 20 * Math.log10(distanceKm || 1) + 20 * Math.log10(freq || 1) + 92.45;
+                
+                const prxDbw = eirp - fspl + rxGain - rxLoss - atmLoss;
+                const prxDbm = prxDbw + 30;
+                
+                const gOverT = rxGain - rxLoss - 10 * Math.log10(sysTemp);
+                const cn0 = eirp - fspl - atmLoss + gOverT - BOLTZMANN_DBW;
+                
+                // Carrier-to-Noise Ratio (C/N) evaluated over Nyquist noise bandwidth (Symbol Rate)
+                const noiseBwHz = symbolRate * 1e6;
+                const cn = noiseBwHz > 0 ? cn0 - 10 * Math.log10(noiseBwHz) : 0;
+                
+                // Energy per bit to Noise power density (Eb/N0)
+                const bitRateHz = dataRate * 1e6;
+                const ebN0 = bitRateHz > 0 ? cn0 - 10 * Math.log10(bitRateHz) : 0;
+                
+                margin = ebN0 - reqEbN0;
+
+                // DOM Updates
+                document.getElementById('res-fspl').innerText = `-${formatNum(fspl)} dB`;
+                document.getElementById('res-rf-eirp').innerText = `${formatNum(eirp)} dBW`;
+                document.getElementById('res-rf-prx').innerText = `${formatNum(prxDbm)} dBm`;
+                document.getElementById('res-rf-gt').innerText = `${formatNum(gOverT)} dB/K`;
+                document.getElementById('res-rf-cn').innerText = `${formatNum(cn)} dB`;
+                document.getElementById('res-rf-ebn0').innerText = `${formatNum(ebN0)} dB`;
+
+            } else {
+                // --- FSOC Calculations ---
+                const wave = parseFloat(document.getElementById('fsocWave').value) || 1550;
+                const txPower = parseFloat(document.getElementById('fsocTxPower').value) || 0;
+                const txD = parseFloat(document.getElementById('fsocTxAperture').value) || 0.1;
+                const rxD = parseFloat(document.getElementById('fsocRxAperture').value) || 0.1;
+                const ptLoss = parseFloat(document.getElementById('fsocPointingLoss').value) || 0;
+                const atmLoss = parseFloat(document.getElementById('fsocAtmLoss').value) || 0;
+                const dataRate = parseFloat(document.getElementById('fsocDataRate').value) || 0;
+                const photonsBit = parseFloat(document.getElementById('fsocReqPhotons').value) || 40;
+                const r0_500 = parseFloat(document.getElementById('fsocR0_500').value) || 10;
+                const aoModes = parseFloat(document.getElementById('fsocAoModes').value) || 0;
+
+                const waveMeters = wave * 1e-9;
+                
+                // Aperture Gains
+                const txGainDb = 10 * Math.log10(Math.pow((Math.PI * txD) / waveMeters, 2) || 1);
+                const rxGainDb = 10 * Math.log10(Math.pow((Math.PI * rxD) / waveMeters, 2) || 1);
+                
+                const dMeters = distanceKm * 1000;
+                const fspl = 20 * Math.log10((4 * Math.PI * dMeters) / waveMeters || 1);
+                
+                const txPowerDbm = 10 * Math.log10(txPower || 0.001);
+                const prxDbmRaw = txPowerDbm + txGainDb + rxGainDb - fspl - ptLoss - atmLoss;
+
+                // Atmospheric Turbulence & AO
+                const r0_500_m = r0_500 / 100;
+                const r0_lambda = r0_500_m * Math.pow(wave / 500, 1.2);
+                const D_r0 = rxD / r0_lambda;
+                
+                let phaseVariance = 0;
+                if (aoModes === 0) {
+                    phaseVariance = 1.029 * Math.pow(D_r0, 5/3);
+                } else if (aoModes <= 2) {
+                    phaseVariance = 0.134 * Math.pow(D_r0, 5/3);
+                } else {
+                    phaseVariance = 0.2944 * Math.pow(aoModes + 1, -0.866) * Math.pow(D_r0, 5/3);
+                }
+
+                const seeingLimit = Math.pow(r0_lambda / rxD, 2);
+                const strehl = Math.max(Math.exp(-phaseVariance), seeingLimit);
+                const couplingLoss = -10 * Math.log10(strehl); 
+
+                const prxDbmCoupled = prxDbmRaw - couplingLoss;
+
+                // Quantum Sensitivity
+                const photonEnergy = (PLANCK_H * C_SPEED) / waveMeters;
+                const reqPowerWatts = photonsBit * photonEnergy * (dataRate * 1e6);
+                const rxSensitivity = reqPowerWatts > 0 ? 10 * Math.log10(reqPowerWatts * 1000) : -100;
+                
+                margin = prxDbmCoupled - rxSensitivity;
+
+                // DOM Updates
+                document.getElementById('res-fspl').innerText = `-${formatNum(fspl)} dB`;
+                document.getElementById('res-fsoc-gains').innerText = `+${formatNum(txGainDb + rxGainDb)} dB`;
+                document.getElementById('res-fsoc-strehl').innerText = `Strehl: ${formatNum(strehl, 4)}`;
+                document.getElementById('res-fsoc-coupling').innerText = `-${formatNum(couplingLoss)} dB`;
+                document.getElementById('res-fsoc-prx').innerText = `${formatNum(prxDbmCoupled)} dBm`;
+                document.getElementById('res-fsoc-sens').innerText = `${formatNum(rxSensitivity)} dBm`;
+            }
+
+            // Margin Box Update
+            const marginBox = document.getElementById('margin-box');
+            const marginVal = document.getElementById('res-margin');
+            
+            const msgRobust = document.getElementById('msg-robust');
+            const msgMarginal = document.getElementById('msg-marginal');
+            const msgFailed = document.getElementById('msg-failed');
+            const msgViolation = document.getElementById('msg-violation');
+
+            // Reset Message Visibility
+            msgRobust.classList.add('hidden');
+            msgMarginal.classList.add('hidden');
+            msgFailed.classList.add('hidden');
+            msgViolation.classList.add('hidden');
+            
+            marginVal.innerText = (margin > 0 ? '+' : '') + formatNum(margin);
+
+            if (spectralViolation) {
+                marginBox.className = 'mt-8 p-5 rounded-xl border bg-red-900/20 border-red-500/50';
+                marginVal.className = 'text-5xl font-mono font-bold tracking-tighter text-red-400';
+                msgViolation.classList.remove('hidden');
+            } else if (margin >= 3) {
+                marginBox.className = 'mt-8 p-5 rounded-xl border bg-green-900/20 border-green-500/50';
+                marginVal.className = 'text-5xl font-mono font-bold tracking-tighter text-green-400';
+                msgRobust.classList.remove('hidden');
+            } else if (margin >= 0) {
+                marginBox.className = 'mt-8 p-5 rounded-xl border bg-yellow-900/20 border-yellow-500/50';
+                marginVal.className = 'text-5xl font-mono font-bold tracking-tighter text-yellow-400';
+                msgMarginal.classList.remove('hidden');
+            } else {
+                marginBox.className = 'mt-8 p-5 rounded-xl border bg-red-900/20 border-red-500/50';
+                marginVal.className = 'text-5xl font-mono font-bold tracking-tighter text-red-400';
+                msgFailed.classList.remove('hidden');
+            }
+        }
+
+        // Initialize state to reflect custom drop-downs correctly
+        document.getElementById('orbitAlt').dispatchEvent(new Event('input'));
+        document.getElementById('rfReqEbN0').dispatchEvent(new Event('input'));
+
+        // Switch to the RF Tab on initial load to immediately display the requested parameters
+        switchTab('rf');
+
+    </script>
+</body>
+</html>

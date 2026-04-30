@@ -152,8 +152,8 @@
                             <div class="flex items-center space-x-2"><input type="number" step="any" id="rfRxLoss" value="1" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB</span></div>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
-                            <label class="text-sm text-slate-300 font-medium">System Temp (T_sys)</label>
-                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfSysTemp" value="200" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">K</span></div>
+                            <label class="text-sm text-slate-300 font-medium">Figure of Merit (G/T)</label>
+                            <div class="flex items-center space-x-2"><input type="number" step="any" id="rfGT" value="8.0" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none"><span class="text-xs text-slate-400 w-12">dB/K</span></div>
                         </div>
                         
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
@@ -164,10 +164,16 @@
                             </div>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
-                            <label class="text-sm text-slate-300 font-medium">Baseband Eff. (m × r)</label>
+                            <label class="text-sm text-slate-300 font-medium">Modulation & FEC</label>
                             <div class="flex items-center space-x-2">
-                                <input type="number" step="any" id="rfBasebandEff" value="1.0" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
-                                <span class="text-xs text-slate-400 w-12">bps/sym</span>
+                                <select id="rfModPreset" class="calc-trigger w-40 bg-slate-800 border border-slate-600 text-white text-xs px-2 py-1.5 rounded focus:outline-none">
+                                    <option value="9.6" data-eff="0.5">BPSK 1/2</option>
+                                    <option value="10.5" data-eff="1.0">QPSK 1/2</option>
+                                    <option value="6.0" data-eff="1.0" selected>DVB-S2X QPSK (High Eff)</option>
+                                    <option value="14.0" data-eff="2.0">8PSK 2/3</option>
+                                    <option value="15.5" data-eff="3.0">16QAM 3/4</option>
+                                    <option value="20.0" data-eff="5.0">64QAM 5/6</option>
+                                </select>
                             </div>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
@@ -175,20 +181,6 @@
                             <div class="flex items-center space-x-2">
                                 <input type="number" step="0.05" id="rfRolloff" value="0.20" class="calc-trigger w-24 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
                                 <span class="text-xs text-slate-400 w-12"></span>
-                            </div>
-                        </div>
-                        <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
-                            <label class="text-sm text-slate-300 font-medium">Modulation Target (Eb/N0)</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="number" step="any" id="rfReqEbN0" value="6" class="calc-trigger w-16 bg-slate-800 border border-slate-600 text-white text-right px-2 py-1 rounded focus:outline-none">
-                                <select id="rfModPreset" class="w-24 bg-slate-800 border border-slate-600 text-white text-xs px-1 py-1.5 rounded focus:outline-none">
-                                    <option value="9.6" data-eff="0.5">BPSK 1/2</option>
-                                    <option value="10.5" data-eff="1.0">QPSK 1/2</option>
-                                    <option value="14.0" data-eff="2.0">8PSK 2/3</option>
-                                    <option value="15.5" data-eff="3.0">16QAM 3/4</option>
-                                    <option value="20.0" data-eff="5.0">64QAM 5/6</option>
-                                    <option value="custom" hidden selected>Custom</option>
-                                </select>
                             </div>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-slate-700/50">
@@ -312,8 +304,8 @@
                                 <span id="res-rf-prx" class="font-mono text-white font-medium">0.00 dBm</span>
                             </div>
                             <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                                <span class="text-sm text-slate-300">G/T</span>
-                                <span id="res-rf-gt" class="font-mono text-white font-medium">0.00 dB/K</span>
+                                <span class="text-sm text-slate-300">System Noise Temp (T_sys)</span>
+                                <span id="res-rf-tsys" class="font-mono text-white font-medium">0.00 K</span>
                             </div>
                             <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
                                 <div>
@@ -559,34 +551,6 @@
         bindPreset('fsocAoPreset', 'fsocAoModes');
         bindPreset('fsocModPreset', 'fsocReqPhotons');
 
-        // Custom RF Modulation Binding (Handles Eb/N0 and Baseband Efficiency)
-        const rfModPreset = document.getElementById('rfModPreset');
-        const rfReqEbN0 = document.getElementById('rfReqEbN0');
-        const rfBasebandEff = document.getElementById('rfBasebandEff');
-
-        rfModPreset.addEventListener('change', (e) => {
-            if (e.target.value !== 'custom') {
-                const selectedOpt = e.target.options[e.target.selectedIndex];
-                rfReqEbN0.value = e.target.value;
-                rfBasebandEff.value = selectedOpt.getAttribute('data-eff');
-                calculateResults();
-            }
-        });
-
-        function checkRfCustom() {
-            let found = false;
-            Array.from(rfModPreset.options).forEach(opt => {
-                if (opt.value === rfReqEbN0.value && opt.getAttribute('data-eff') === rfBasebandEff.value && opt.value !== 'custom') {
-                    rfModPreset.value = opt.value;
-                    found = true;
-                }
-            });
-            if (!found) rfModPreset.value = 'custom';
-        }
-        
-        rfReqEbN0.addEventListener('input', checkRfCustom);
-        rfBasebandEff.addEventListener('input', checkRfCustom);
-
         // Bind all inputs to trigger calculation
         document.querySelectorAll('.calc-trigger').forEach(el => {
             el.addEventListener('input', calculateResults);
@@ -623,12 +587,13 @@
                 const rxGain = parseFloat(document.getElementById('rfRxGain').value) || 0;
                 const rxLoss = parseFloat(document.getElementById('rfRxLoss').value) || 0;
                 const atmLoss = parseFloat(document.getElementById('rfAtmLoss').value) || 0;
-                const sysTemp = parseFloat(document.getElementById('rfSysTemp').value) || 1;
+                const gOverT = parseFloat(document.getElementById('rfGT').value) || 0;
                 
                 // Baseband Parameters
                 const dataRate = parseFloat(document.getElementById('rfDataRate').value) || 0;
-                const reqEbN0 = parseFloat(document.getElementById('rfReqEbN0').value) || 0;
-                const bbEff = parseFloat(document.getElementById('rfBasebandEff').value) || 1;
+                const modSelect = document.getElementById('rfModPreset');
+                const reqEbN0 = parseFloat(modSelect.value) || 0;
+                const bbEff = parseFloat(modSelect.options[modSelect.selectedIndex].getAttribute('data-eff')) || 1;
                 const rolloff = parseFloat(document.getElementById('rfRolloff').value) || 0;
 
                 // Derived Bandwidths
@@ -657,7 +622,7 @@
                 const prxDbw = eirp - fspl + rxGain - rxLoss - atmLoss;
                 const prxDbm = prxDbw + 30;
                 
-                const gOverT = rxGain - rxLoss - 10 * Math.log10(sysTemp);
+                const sysTemp = Math.pow(10, (rxGain - rxLoss - gOverT) / 10);
                 const cn0 = eirp - fspl - atmLoss + gOverT - BOLTZMANN_DBW;
                 
                 // Carrier-to-Noise Ratio (C/N) evaluated over Nyquist noise bandwidth (Symbol Rate)
@@ -674,7 +639,7 @@
                 document.getElementById('res-fspl').innerText = `-${formatNum(fspl)} dB`;
                 document.getElementById('res-rf-eirp').innerText = `${formatNum(eirp)} dBW`;
                 document.getElementById('res-rf-prx').innerText = `${formatNum(prxDbm)} dBm`;
-                document.getElementById('res-rf-gt').innerText = `${formatNum(gOverT)} dB/K`;
+                document.getElementById('res-rf-tsys').innerText = `${formatNum(sysTemp)} K`;
                 document.getElementById('res-rf-cn').innerText = `${formatNum(cn)} dB`;
                 document.getElementById('res-rf-ebn0').innerText = `${formatNum(ebN0)} dB`;
 
@@ -777,7 +742,6 @@
 
         // Initialize state to reflect custom drop-downs correctly
         document.getElementById('orbitAlt').dispatchEvent(new Event('input'));
-        document.getElementById('rfReqEbN0').dispatchEvent(new Event('input'));
 
         // Switch to the RF Tab on initial load to immediately display the requested parameters
         switchTab('rf');
